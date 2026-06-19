@@ -4,8 +4,8 @@ compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
-ENVIRONMENT = "development"
+ENVIRONMENT = "production"
 JWT_ACCESS_SECRET = "chatforge-access-secret-change-this"
 JWT_REFRESH_SECRET = "chatforge-refresh-secret-change-this"
 DATABASE_URL = "postgresql://neondb_owner:npg_s31tEIbiDjdS@ep-spring-bonus-ap1f83ua-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-AI_SERVICE_URL = "http://localhost:8000"
+AI_SERVICE_URL = "https://chatforge-jjsa.onrender.com"

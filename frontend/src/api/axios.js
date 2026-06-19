@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'http://localhost:8787',
+  baseURL: 'https://chatforge-backend.vanditaj008.workers.dev',
   timeout: 28000,
 })
 

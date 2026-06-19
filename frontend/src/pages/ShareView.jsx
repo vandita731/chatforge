@@ -110,7 +110,7 @@ export default function ShareView() {
     setLoading(true)
     async function fetchShare() {
       try {
-        const res = await fetch(`http://localhost:8787/s/${token}`)
+        const res = await fetch(`https://chatforge-backend.vanditaj008.workers.dev/s/${token}`)
 const resData = await res.json()
 if (!res.ok) throw new Error(resData.error || 'Not found')
 setData(resData)                        // fixed: res.data not {value}
