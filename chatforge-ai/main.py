@@ -156,8 +156,8 @@ async def analyze(input: ChatInput):
         )
         result = safe_parse(main_response.text)
         result["openQuestions"] = [q for q in result.get("openQuestions", []) if q.strip()]
-result["decisions"] = [d for d in result.get("decisions", []) if d.strip()]
-result["actionItems"] = [a for a in result.get("actionItems", []) if a.strip()]
+        result["decisions"] = [d for d in result.get("decisions", []) if d.strip()]
+        result["actionItems"] = [a for a in result.get("actionItems", []) if a.strip()]
     except json.JSONDecodeError:
         raise HTTPException(status_code=500, detail="AI returned malformed JSON. Try again.")
     except Exception as e:
