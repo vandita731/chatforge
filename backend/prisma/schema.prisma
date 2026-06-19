@@ -1,0 +1,132 @@
+// ChatForge — Prisma Schema
+// DB: Neon Postgres (serverless)
+// Adapter: @prisma/adapter-neon
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────
+// USERS
+// ─────────────────────────────────────
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // bcrypt hashed — never store plain text
+  name      String?
+  plan      Plan     @default(FREE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // relations
+  refreshTokens RefreshToken[]
+  sessions      Session[]
+  prompts       Prompt[]
+
+  @@map("users")
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+// ─────────────────────────────────────
+// REFRESH TOKENS
+// ─────────────────────────────────────
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique // store hashed version of the token
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// ─────────────────────────────────────
+// SESSIONS (pasted chats)
+// ─────────────────────────────────────
+model Session {
+  id         String   @id @default(uuid())
+  userId     String
+  title      String?  // auto-generated or user-named
+  rawChat    String   // the full pasted chat text
+  tokenCount Int      @default(0)
+  publicToken String?  @unique  // random string like "abc123"
+  isPublic    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // relations
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  outputs Output[]
+
+  @@map("sessions")
+}
+
+// ─────────────────────────────────────
+// OUTPUTS (generated from a session)
+// ─────────────────────────────────────
+model Output {
+  id        String     @id @default(uuid())
+  sessionId String
+  type      OutputType
+  content   String     // the actual generated text
+  createdAt DateTime   @default(now())
+
+  // relations
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("outputs")
+}
+
+enum OutputType {
+  RESUME_PROMPT
+  BLOG
+  LINKEDIN
+  PDF
+  ACTION_ITEMS
+  OPEN_QUESTIONS
+  DECISIONS
+  SUMMARY
+  HEALTH
+}
+
+// ─────────────────────────────────────
+// PROMPTS (prompt studio)
+// ─────────────────────────────────────
+model Prompt {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  body      String   // the actual prompt text
+  category  Category @default(GENERAL)
+  tags      String[] // postgres array — e.g. ["react", "debugging", "refactor"]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("prompts")
+}
+
+enum Category {
+  GENERAL
+  CODING
+  WRITING
+  RESEARCH
+  DESIGN
+  ANALYSIS
+}

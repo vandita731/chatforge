@@ -1,0 +1,28 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "@noble/hashes": "^2.2.0",
+    "dotenv": "^17.4.2",
+    "hono": "^4.12.23",
+    "jose": "^6.2.3",
+    "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260529.1",
+    "@prisma/client": "^6.19.3",
+    "@types/ws": "^8.18.1",
+    "prisma": "^6.19.3",
+    "typescript": "^6.0.3",
+    "wrangler": "^4.95.0"
+  }
+}
