@@ -33,27 +33,43 @@ sess.post("/", authMiddleware, async (c) => {
     const session = rows[0]
 
     const controller = new AbortController()
-const timeoutId = setTimeout(() => controller.abort(), 25000) // 25s, under Workers' 30s limit
+    const timeoutId = setTimeout(() => controller.abort(), 25000)
 
-try {
-  const aiResponse = await fetch(`${c.env.AI_SERVICE_URL}/analyze`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ rawChat }),
-    signal: controller.signal
-  })
-  clearTimeout(timeoutId)
-  const analysis = await aiResponse.json() as any
-  // ... rest of your code
-} catch (e) {
-  clearTimeout(timeoutId)
-  console.error('AI service failed:', e)
-  return c.json({
-    session: { id: session.id, userId: session.userId, title: session.title, tokenCount: 0, createdAt: session.createdAt },
-    analysis: null,
-    error: 'Chat too long or AI service timed out. Try a shorter chat.'
-  }, 201)
-}
+    try {
+        const aiResponse = await fetch(`${c.env.AI_SERVICE_URL}/analyze`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rawChat }),
+            signal: controller.signal
+        })
+        clearTimeout(timeoutId)
+        const analysis = await aiResponse.json() as any
+
+        // save all outputs
+        await sql`INSERT INTO outputs (id, "sessionId", type, content, "createdAt") VALUES (gen_random_uuid(), ${session.id}, 'RESUME_PROMPT', ${analysis.resumePrompt}, NOW())`
+        await sql`INSERT INTO outputs (id, "sessionId", type, content, "createdAt") VALUES (gen_random_uuid(), ${session.id}, 'ACTION_ITEMS', ${JSON.stringify(analysis.actionItems)}, NOW())`
+        await sql`INSERT INTO outputs (id, "sessionId", type, content, "createdAt") VALUES (gen_random_uuid(), ${session.id}, 'OPEN_QUESTIONS', ${JSON.stringify(analysis.openQuestions)}, NOW())`
+        await sql`INSERT INTO outputs (id, "sessionId", type, content, "createdAt") VALUES (gen_random_uuid(), ${session.id}, 'DECISIONS', ${JSON.stringify(analysis.decisions)}, NOW())`
+        await sql`INSERT INTO outputs (id, "sessionId", type, content, "createdAt") VALUES (gen_random_uuid(), ${session.id}, 'SUMMARY', ${analysis.summary}, NOW())`
+        await sql`INSERT INTO outputs (id, "sessionId", type, content, "createdAt") VALUES (gen_random_uuid(), ${session.id}, 'HEALTH', ${JSON.stringify({ healthScore: analysis.healthScore, healthStatus: analysis.healthStatus, promptScore: analysis.promptScore })}, NOW())`
+
+        // update token count on the session
+        await sql`UPDATE sessions SET "tokenCount" = ${analysis.tokenCount} WHERE id = ${session.id}`
+
+        return c.json({
+            session: { ...session, tokenCount: analysis.tokenCount },
+            analysis
+        }, 201)
+
+    } catch (e) {
+        clearTimeout(timeoutId)
+        console.error('AI service failed:', e)
+        return c.json({
+            session: { id: session.id, userId: session.userId, title: session.title, tokenCount: 0, createdAt: session.createdAt },
+            analysis: null,
+            error: 'Chat too long or AI service timed out. Try a shorter chat.'
+        }, 201)
+    }
 })
 sess.get("/", authMiddleware, async (c) => {
     const sql = createDb(c.env.DATABASE_URL)
