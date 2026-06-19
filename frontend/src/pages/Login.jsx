@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import api from '../api/axios'
 
 export default function Login() {
@@ -8,6 +8,7 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()   // ← add this line
 
   async function handleLogin(e) {
     e.preventDefault()
@@ -17,7 +18,13 @@ export default function Login() {
       const { data } = await api.post('/auth/login', { email, password })
       localStorage.setItem('accessToken', data.accessToken)
       localStorage.setItem('refreshToken', data.refreshToken)
-      navigate('/')
+
+      // ← changed: if we arrived here carrying demo data, go to compressor with it
+      if (location.state?.demoChat) {
+        navigate('/compress', { state: location.state })
+      } else {
+        navigate('/dashboard')
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed')
     } finally {

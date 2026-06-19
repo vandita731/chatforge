@@ -103,7 +103,7 @@ export default function Dashboard() {
   function handleLogout() {
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
-    navigate('/login')
+    navigate('/')
   }
 
   const failedCount = sessions.filter(s => s.tokenCount === 0).length
@@ -118,7 +118,7 @@ export default function Dashboard() {
     >
       {/* navbar */}
       <nav className="border-b border-black/10 px-8 py-4 flex items-center justify-between sticky top-0 bg-[#f0ede6]/90 backdrop-blur-sm z-10">
-        <span className="font-semibold text-black tracking-tight text-lg">ChatForge</span>
+        <Link to="/" className="font-semibold text-black tracking-tight">ChatForge</Link>
         <div className="flex items-center gap-6">
           <Link to="/prompts" className="text-black/40 hover:text-black text-sm transition">
             Prompt Studio

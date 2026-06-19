@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams ,useLocation } from 'react-router-dom'
 import api from '../api/axios'
 
 
@@ -13,6 +13,8 @@ export default function Compressor() {
     const [exportLoading, setExportLoading] = useState('')
     const sessionId = searchParams.get('id')
     const [exportResult, setExportResult] = useState(null)
+    const location = useLocation()   // ← add this line
+
 
 
     useEffect(() => {
@@ -30,6 +32,13 @@ export default function Compressor() {
 }
         loadSession()
     }, [sessionId])
+
+    useEffect(() => {
+    if (location.state?.demoChat) {
+        setTitle(location.state.demoTitle || '')
+        setRawChat(location.state.demoChat)
+    }
+}, [location.state])
 
     async function handleCompress(e) {
         e.preventDefault()
@@ -98,7 +107,7 @@ export default function Compressor() {
             {/* navbar */}
             <nav className="border-b border-black/10 px-8 py-4 flex items-center justify-between sticky top-0 bg-[#f0ede6]/90 backdrop-blur-sm z-10">
                 <Link to="/" className="font-semibold text-black tracking-tight">ChatForge</Link>
-                <Link to="/" className="text-black/40 hover:text-black text-sm transition">
+                <Link to="/dashboard" className="text-black/40 hover:text-black text-sm transition">
                     ← Dashboard
                 </Link>
             </nav>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link ,useLocation } from 'react-router-dom'
 import api from '../api/axios'
 
 export default function Register() {
@@ -9,6 +9,7 @@ export default function Register() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()   // ← add this line
 
   async function handleRegister(e) {
     e.preventDefault()
@@ -16,7 +17,7 @@ export default function Register() {
     setError('')
     try {
       await api.post('/auth/register', { name, email, password })
-      navigate('/login')
+      navigate('/login', { state: location.state })   // ← changed: pass state through
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed')
     } finally {

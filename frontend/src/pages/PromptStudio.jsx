@@ -525,7 +525,7 @@ export default function PromptStudio() {
         <Link to="/" style={{ fontWeight: 700, fontSize: 15, color: '#111827', textDecoration: 'none' }}>
           ChatForge
         </Link>
-        <Link to="/" style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', textDecoration: 'none' }}>
+        <Link to="/dashboard" style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', textDecoration: 'none' }}>
           ← Dashboard
         </Link>
       </nav>

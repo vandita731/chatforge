@@ -5,6 +5,8 @@ import Dashboard from './pages/Dashboard'
 import Compressor from './pages/Compressor'
 import PromptStudio from './pages/PromptStudio'
 import ShareView from './pages/ShareView'
+import Landing from './pages/Landing'
+
 
 function PrivateRoute({ children }) {
   const token = localStorage.getItem('accessToken')
@@ -14,14 +16,16 @@ function PrivateRoute({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/s/:token" element={<ShareView />} />
-        <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-        <Route path="/compress" element={<PrivateRoute><Compressor /></PrivateRoute>} />
-        <Route path="/prompts" element={<PrivateRoute><PromptStudio /></PrivateRoute>} />
-      </Routes>
+      
+<Routes>
+  <Route path="/" element={<Landing />} />
+  <Route path="/login" element={<Login />} />
+  <Route path="/register" element={<Register />} />
+  <Route path="/s/:token" element={<ShareView />} />
+  <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+  <Route path="/compress" element={<PrivateRoute><Compressor /></PrivateRoute>} />
+  <Route path="/prompts" element={<PrivateRoute><PromptStudio /></PrivateRoute>} />
+</Routes>
     </BrowserRouter>
   )
 }
