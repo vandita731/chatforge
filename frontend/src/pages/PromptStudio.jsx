@@ -57,10 +57,10 @@ function Toast({ message }) {
 function PromptCard({ prompt, onDelete, onEdit, onCopy }) {
   const [expanded, setExpanded] = useState(false)
   const tags = Array.isArray(prompt.tags)
-  ? prompt.tags
-  : prompt.tags
-    ? prompt.tags.split(',').map(t => t.trim()).filter(Boolean)
-    : []
+    ? prompt.tags
+    : prompt.tags
+      ? prompt.tags.split(',').map(t => t.trim()).filter(Boolean)
+      : []
 
   return (
     <div style={{
@@ -150,6 +150,50 @@ function PromptCard({ prompt, onDelete, onEdit, onCopy }) {
   )
 }
 
+// ── voice input hook ─────────────────────────────────────────────────────────
+
+function useVoiceInput(onResult) {
+  const [listening, setListening] = useState(false)
+  const [lang, setLang] = useState('en-IN')
+
+  const isSupported = typeof window !== 'undefined' &&
+    (window.SpeechRecognition || window.webkitSpeechRecognition)
+
+  function start(currentLang) {
+    if (!isSupported) {
+      alert('Voice input is only supported in Chrome right now.')
+      return
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    const recognition = new SpeechRecognition()
+    recognition.lang = currentLang || lang
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+    recognition.continuous = false
+
+    recognition.onstart = () => setListening(true)
+    recognition.onend = () => setListening(false)
+    recognition.onerror = () => setListening(false)
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript
+      onResult(transcript)
+    }
+    recognition.start()
+    window.__chatforge_recognition = recognition
+  }
+
+  function stop() {
+    window.__chatforge_recognition?.stop()
+    setListening(false)
+  }
+
+  function toggleLang() {
+    setLang(prev => prev === 'en-IN' ? 'hi-IN' : 'en-IN')
+  }
+
+  return { listening, start, stop, lang, toggleLang, isSupported }
+}
+
 // ── form ──────────────────────────────────────────────────────────────────────
 
 function PromptForm({ initial, onSave, onCancel, saving }) {
@@ -159,9 +203,16 @@ function PromptForm({ initial, onSave, onCancel, saving }) {
   const [tags, setTags]         = useState(initial?.tags     || '')
 
   const [idea, setIdea] = useState('')
-const [generating, setGenerating] = useState(false)
+  const [generating, setGenerating] = useState(false)
 
-async function handleGenerate() {
+  const { listening, start, stop, lang, toggleLang, isSupported } = useVoiceInput(
+    (transcript) => {
+      setIdea(prev => prev ? `${prev} ${transcript}` : transcript)
+      setBody('')
+    }
+  )
+
+  async function handleGenerate() {
     console.log("Generate clicked")
 
     if (!idea.trim()) return
@@ -185,25 +236,26 @@ async function handleGenerate() {
     } finally {
         setGenerating(false)
     }
-}
-  async function handleSubmit(e) {
-  e.preventDefault()
-
-  if (!body.trim()) {
-    alert('Please generate a prompt first')
-    return
   }
 
-  onSave({
-  title,
-  body,
-  category,
-  tags: tags
-    .split(',')
-    .map(t => t.trim())
-    .filter(Boolean)
-})
-}
+  async function handleSubmit(e) {
+    e.preventDefault()
+
+    if (!body.trim()) {
+      alert('Please generate a prompt first')
+      return
+    }
+
+    onSave({
+      title,
+      body,
+      category,
+      tags: tags
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean)
+    })
+  }
 
   const inputStyle = {
     width: '100%', boxSizing: 'border-box',
@@ -233,47 +285,85 @@ async function handleGenerate() {
       <div>
         <label style={labelStyle}>Prompt</label>
         <div>
-    <label style={labelStyle}>Your Idea</label>
-    <div style={{ display: 'flex', gap: 8 }}>
-        <input
-            value={idea}
-            onChange={e => {
-  setIdea(e.target.value)
-  setBody('')
-}}
-            placeholder="e.g. help me review React code for performance issues"
-            style={{ ...inputStyle, flex: 1 }}
-        />
-        <button
-            type="button"
-            onClick={handleGenerate}
-            disabled={generating || !idea.trim()}
-            style={{
-                background: '#6d28d9', color: '#fff', fontSize: 13,
-                fontWeight: 500, padding: '9px 16px', borderRadius: 8,
-                border: 'none', cursor: generating ? 'not-allowed' : 'pointer',
-                opacity: generating ? 0.6 : 1, whiteSpace: 'nowrap'
-            }}
-        >
-            {generating ? 'Generating…' : '✦ Generate'}
-        </button>
-    </div>
-    <p style={{ fontSize: 11, color: '#6b7280', marginTop: 5 }}>
-        Describe what you want the prompt to do — AI will write it for you
-    </p>
-</div>
+          <label style={labelStyle}>Your Idea</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                  value={idea}
+                  onChange={e => {
+                    setIdea(e.target.value)
+                    setBody('')
+                  }}
+                  placeholder="e.g. help me review React code for performance issues"
+                  style={{ ...inputStyle, flex: 1 }}
+              />
+              {isSupported && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => listening ? stop() : start(lang)}
+                    title={listening ? 'Stop listening' : 'Speak your idea'}
+                    style={{
+                      background: listening ? '#dc2626' : '#000',
+                      color: '#fff',
+                      border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8,
+                      padding: '9px 12px', cursor: 'pointer', fontSize: 12,
+                      fontWeight: 600, whiteSpace: 'nowrap',
+                      animation: listening ? 'pulse 1s infinite' : 'none'
+                    }}
+                  >
+                    {listening ? '⏹ Stop' : '🎤 Speak'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleLang}
+                    title="Toggle language"
+                    style={{
+                      background: '#000', color: '#fff', border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: 8, padding: '9px 10px', cursor: 'pointer',
+                      fontSize: 11, fontWeight: 700, minWidth: 38
+                    }}
+                  >
+                    {lang === 'en-IN' ? 'EN' : 'हिं'}
+                  </button>
+                </>
+              )}
+              <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={generating || !idea.trim()}
+                  style={{
+                      background: '#6d28d9', color: '#fff', fontSize: 13,
+                      fontWeight: 500, padding: '9px 16px', borderRadius: 8,
+                      border: 'none', cursor: generating ? 'not-allowed' : 'pointer',
+                      opacity: generating ? 0.6 : 1, whiteSpace: 'nowrap'
+                  }}
+              >
+                  {generating ? 'Generating…' : '✦ Generate'}
+              </button>
+          </div>
+          {listening && (
+            <p style={{ fontSize: 11, color: '#dc2626', marginTop: 6, fontWeight: 500 }}>
+              ● Listening{lang === 'hi-IN' ? ' (हिंदी)' : ' (English)'}…
+            </p>
+          )}
+          <p style={{ fontSize: 11, color: '#6b7280', marginTop: 5 }}>
+              Describe what you want the prompt to do, type or speak — AI will write it for you
+          </p>
+          <style>{`@keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.5 } }`}</style>
+        </div>
         <textarea
-  value={body}
-  readOnly
-  placeholder="Generated prompt will appear here..."
-  rows={8}
-  style={{
-    ...inputStyle,
-    resize: 'vertical',
-    lineHeight: 1.6,
-    opacity: body ? 1 : 0.8
-  }}
-/>
+          value={body}
+          readOnly
+          placeholder="Generated prompt will appear here..."
+          rows={8}
+          style={{
+            ...inputStyle,
+            resize: 'vertical',
+            lineHeight: 1.6,
+            opacity: body ? 1 : 0.8,
+            marginTop: 14
+          }}
+        />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -337,7 +427,7 @@ export default function PromptStudio() {
   const [editingPrompt, setEditingPrompt] = useState(null)   // null = create mode, object = edit mode
   const [showForm, setShowForm]   = useState(false)
   const [filter, setFilter]       = useState('ALL')
-  
+
 
   function showToast(msg) {
     setToast(msg)
@@ -345,11 +435,11 @@ export default function PromptStudio() {
   }
 
   // load prompts
- useEffect(() => {
+  useEffect(() => {
     async function fetchPrompts() {
       try {
         const { data } = await api.get('/prompts')
-setPrompts(data.rows || [])
+        setPrompts(data.rows || [])
       } catch (err) {
         console.log('ERROR:', err.response?.data || err.message)
         setError('Failed to load prompts.')
@@ -358,7 +448,7 @@ setPrompts(data.rows || [])
       }
     }
     fetchPrompts()
-}, [])
+  }, [])
 
   async function handleSave(formData) {
     setSaving(true)
@@ -377,10 +467,10 @@ setPrompts(data.rows || [])
       setShowForm(false)
       setEditingPrompt(null)
     } catch (err) {
-  console.log("SAVE ERROR:", err.response?.data)
-  console.log(err)
-  setError('Failed to save prompt.')
-} finally {
+      console.log("SAVE ERROR:", err.response?.data)
+      console.log(err)
+      setError('Failed to save prompt.')
+    } finally {
       setSaving(false)
     }
   }
