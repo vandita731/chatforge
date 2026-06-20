@@ -468,12 +468,12 @@ export default function Compressor() {
                                 <div className="mt-4 bg-violet-50 border border-violet-200 rounded-lg px-4 py-3 flex items-center justify-between">
                                     <p className="text-violet-700 text-sm">Published successfully!</p>
                                     <a
-                                        href={publishedUrl}
+                                        href={publishedUrl.split('/blog/')[0]}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-violet-700 text-sm font-medium underline"
                                     >
-                                        View post →
+                                        View on blog →
                                     </a>
                                 </div>
                             )}
