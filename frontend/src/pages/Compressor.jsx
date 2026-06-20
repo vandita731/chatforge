@@ -1,7 +1,104 @@
 import { useState, useEffect } from 'react'
-import { Link, useSearchParams ,useLocation } from 'react-router-dom'
+import { Link, useSearchParams, useLocation } from 'react-router-dom'
 import api from '../api/axios'
 
+// ── small modal for first-time blog connection ──────────────────────────────
+
+function ConnectBlogModal({ onClose, onConnected }) {
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [connecting, setConnecting] = useState(false)
+    const [error, setError] = useState('')
+
+    async function handleConnect(e) {
+        e.preventDefault()
+        setConnecting(true)
+        setError('')
+        try {
+            await api.post('/blog-publish/connect', { email, password })
+            onConnected()
+        } catch (err) {
+            setError(err.response?.data?.error || 'Could not connect blog account')
+        } finally {
+            setConnecting(false)
+        }
+    }
+
+    return (
+        <div style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
+        }}>
+            <div style={{
+                background: '#fff', borderRadius: 16, padding: '28px 28px 24px',
+                width: '100%', maxWidth: 360
+            }}>
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9ca3af', marginBottom: 6 }}>
+                    Connect Blog Account
+                </p>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: '#111827', marginBottom: 18 }}>
+                    Log in to publish
+                </h3>
+
+                {error && (
+                    <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px', marginBottom: 14 }}>
+                        <p style={{ color: '#dc2626', fontSize: 12.5 }}>{error}</p>
+                    </div>
+                )}
+
+                <form onSubmit={handleConnect} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <input
+                        type="email"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        placeholder="Blog account email"
+                        required
+                        style={{
+                            background: '#000', color: '#fff', fontSize: 13,
+                            padding: '10px 14px', borderRadius: 8,
+                            border: '1px solid rgba(255,255,255,0.1)', outline: 'none'
+                        }}
+                    />
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder="Blog account password"
+                        required
+                        style={{
+                            background: '#000', color: '#fff', fontSize: 13,
+                            padding: '10px 14px', borderRadius: 8,
+                            border: '1px solid rgba(255,255,255,0.1)', outline: 'none'
+                        }}
+                    />
+                    <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                        <button
+                            type="submit"
+                            disabled={connecting}
+                            style={{
+                                flex: 1, background: '#111827', color: '#fff', fontSize: 13,
+                                fontWeight: 600, padding: '10px 0', borderRadius: 8, border: 'none',
+                                cursor: connecting ? 'not-allowed' : 'pointer', opacity: connecting ? 0.6 : 1
+                            }}
+                        >
+                            {connecting ? 'Connecting…' : 'Connect'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            style={{
+                                flex: 1, background: 'transparent', color: '#6b7280', fontSize: 13,
+                                fontWeight: 500, padding: '10px 0', borderRadius: 8, border: '1px solid #e5e7eb', cursor: 'pointer'
+                            }}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    )
+}
 
 export default function Compressor() {
     const [title, setTitle] = useState('')
@@ -13,32 +110,50 @@ export default function Compressor() {
     const [exportLoading, setExportLoading] = useState('')
     const sessionId = searchParams.get('id')
     const [exportResult, setExportResult] = useState(null)
-    const location = useLocation()   // ← add this line
+    const location = useLocation()
 
+    // ── blog publish state ───────────────────────────────────────────────────
+    const [blogConnected, setBlogConnected] = useState(false)
+    const [showConnectModal, setShowConnectModal] = useState(false)
+    const [publishing, setPublishing] = useState(false)
+    const [publishedUrl, setPublishedUrl] = useState('')
 
 
     useEffect(() => {
         if (!sessionId) return
         async function loadSession() {
-    setLoading(true)
-    try {
-        const { data } = await api.get(`/sessions/${sessionId}/outputs`)  // ← fixed endpoint
-        setResult(data)
-    } catch (err) {
-        console.log('ERROR:', err.response?.data || err.message)
-    } finally {
-        setLoading(false)
-    }
-}
+            setLoading(true)
+            try {
+                const { data } = await api.get(`/sessions/${sessionId}/outputs`)
+                setResult(data)
+            } catch (err) {
+                console.log('ERROR:', err.response?.data || err.message)
+            } finally {
+                setLoading(false)
+            }
+        }
         loadSession()
     }, [sessionId])
 
     useEffect(() => {
-    if (location.state?.demoChat) {
-        setTitle(location.state.demoTitle || '')
-        setRawChat(location.state.demoChat)
-    }
-}, [location.state])
+        if (location.state?.demoChat) {
+            setTitle(location.state.demoTitle || '')
+            setRawChat(location.state.demoChat)
+        }
+    }, [location.state])
+
+    // check blog connection status once on mount
+    useEffect(() => {
+        async function checkBlogConnection() {
+            try {
+                const { data } = await api.get('/blog-publish/connect')
+                setBlogConnected(data.connected)
+            } catch {
+                setBlogConnected(false)
+            }
+        }
+        checkBlogConnection()
+    }, [])
 
     async function handleCompress(e) {
         e.preventDefault()
@@ -82,6 +197,56 @@ export default function Compressor() {
         }
     }
 
+    // ── publish to blog ──────────────────────────────────────────────────────
+    async function handlePublishToBlog() {
+        if (!blogConnected) {
+            setShowConnectModal(true)
+            return
+        }
+
+        // need a BLOG export generated first
+        if (!exportResult || exportResult.type !== 'BLOG') {
+            // try generating it automatically if not already showing
+            setExportLoading('BLOG')
+            try {
+                await api.post(`/sessions/${result.session.id}/export`, { exportType: 'BLOG' })
+            } catch {
+                alert('Could not generate blog content first — try clicking "Blog Post" above.')
+                setExportLoading('')
+                return
+            }
+            setExportLoading('')
+        }
+
+        setPublishing(true)
+        setPublishedUrl('')
+        try {
+            const { data } = await api.post(`/blog-publish/${result.session.id}/publish`)
+            setPublishedUrl(data.postUrl)
+        } catch (err) {
+            const code = err.response?.data?.error
+            if (code === 'NO_BLOG_CONNECTED') {
+                setShowConnectModal(true)
+            } else if (code === 'BLOG_SESSION_EXPIRED') {
+                setBlogConnected(false)
+                setShowConnectModal(true)
+            } else if (code === 'NO_BLOG_EXPORT') {
+                alert('Generate the Blog Post export first, then publish.')
+            } else {
+                alert('Publish failed — please try again.')
+            }
+        } finally {
+            setPublishing(false)
+        }
+    }
+
+    function handleBlogConnected() {
+        setBlogConnected(true)
+        setShowConnectModal(false)
+        // automatically retry publish right after connecting
+        handlePublishToBlog()
+    }
+
     function copy(text) {
         navigator.clipboard.writeText(text)
         alert('Copied!')
@@ -104,6 +269,14 @@ export default function Compressor() {
                     </div>
                 </div>
             )}
+
+            {showConnectModal && (
+                <ConnectBlogModal
+                    onClose={() => setShowConnectModal(false)}
+                    onConnected={handleBlogConnected}
+                />
+            )}
+
             {/* navbar */}
             <nav className="border-b border-black/10 px-8 py-4 flex items-center justify-between sticky top-0 bg-[#f0ede6]/90 backdrop-blur-sm z-10">
                 <Link to="/" className="font-semibold text-black tracking-tight">ChatForge</Link>
@@ -192,14 +365,14 @@ export default function Compressor() {
                                 {result.analysis.resumePrompt}
                             </p>
                             {result.analysis.promptScore !== null ? (
-  <p className="text-xs text-black/20 mt-3">
-    Quality score: {result.analysis.promptScore}/10
-  </p>
-) : (
-  <p className="text-xs text-black/20 mt-3">
-    Quality score: Skipped for long chats
-  </p>
-)}
+                                <p className="text-xs text-black/20 mt-3">
+                                    Quality score: {result.analysis.promptScore}/10
+                                </p>
+                            ) : (
+                                <p className="text-xs text-black/20 mt-3">
+                                    Quality score: Skipped for long chats
+                                </p>
+                            )}
                         </div>
 
                         {/* decisions */}
@@ -232,19 +405,18 @@ export default function Compressor() {
 
                         {/* open questions */}
                         {result.analysis.openQuestions?.length > 0 && (
-  <div className="bg-white/60 border border-black/8 rounded-xl p-6">
-    <p className="text-xs uppercase tracking-widest text-black/30 mb-3">Open Questions</p>
-    <ul className="space-y-2">
-      {result.analysis.openQuestions.map((q, i) => (
-        <li key={i} className="text-black/60 text-sm flex gap-2">
-          <span className="text-black/20">?</span>{q}
-        </li>
-      ))}
-    </ul>
-  </div>
-)}
+                            <div className="bg-white/60 border border-black/8 rounded-xl p-6">
+                                <p className="text-xs uppercase tracking-widest text-black/30 mb-3">Open Questions</p>
+                                <ul className="space-y-2">
+                                    {result.analysis.openQuestions.map((q, i) => (
+                                        <li key={i} className="text-black/60 text-sm flex gap-2">
+                                            <span className="text-black/20">?</span>{q}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
 
-                        {/* export and share */}
                         {/* export and share */}
                         <div className="bg-white/60 border border-black/8 rounded-xl p-6">
                             <p className="text-xs uppercase tracking-widest text-black/30 mb-4">Export & Share</p>
@@ -278,7 +450,33 @@ export default function Compressor() {
                                 >
                                     Share Link
                                 </button>
+                                <button
+                                    onClick={handlePublishToBlog}
+                                    disabled={publishing}
+                                    className="text-sm px-4 py-2 h-9 rounded-lg bg-violet-700 text-white hover:bg-violet-800 transition disabled:opacity-40 flex items-center gap-1.5"
+                                >
+                                    {publishing
+                                        ? 'Publishing…'
+                                        : blogConnected
+                                            ? '✦ Publish to Blog'
+                                            : 'Connect & Publish'}
+                                </button>
                             </div>
+
+                            {/* published confirmation */}
+                            {publishedUrl && (
+                                <div className="mt-4 bg-violet-50 border border-violet-200 rounded-lg px-4 py-3 flex items-center justify-between">
+                                    <p className="text-violet-700 text-sm">Published successfully!</p>
+                                    <a
+                                        href={publishedUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-violet-700 text-sm font-medium underline"
+                                    >
+                                        View post →
+                                    </a>
+                                </div>
+                            )}
 
                             {/* export result — full width below buttons */}
                             {exportResult && (
