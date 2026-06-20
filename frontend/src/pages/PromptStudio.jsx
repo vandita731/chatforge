@@ -204,6 +204,9 @@ function PromptForm({ initial, onSave, onCancel, saving }) {
 
   const [idea, setIdea] = useState('')
   const [generating, setGenerating] = useState(false)
+  const [suggestions, setSuggestions] = useState([])
+  const [selectedSuggestions, setSelectedSuggestions] = useState([])
+  const [regenerating, setRegenerating] = useState(false)
 
   const { listening, start, stop, lang, toggleLang, isSupported } = useVoiceInput(
     (transcript) => {
@@ -213,11 +216,11 @@ function PromptForm({ initial, onSave, onCancel, saving }) {
   )
 
   async function handleGenerate() {
-    console.log("Generate clicked")
-
     if (!idea.trim()) return
 
     setGenerating(true)
+    setSuggestions([])
+    setSelectedSuggestions([])
 
     try {
         const { data } = await api.post('/prompts/generate', {
@@ -226,15 +229,40 @@ function PromptForm({ initial, onSave, onCancel, saving }) {
             category
         })
 
-        console.log("Response:", data)
-
         setBody(data.prompt)
+        setSuggestions(data.suggestions || [])
     } catch (err) {
         console.log("GENERATE ERROR:", err.response?.data)
-        console.log(err)
         alert('Generation failed')
     } finally {
         setGenerating(false)
+    }
+  }
+
+  function toggleSuggestion(s) {
+    setSelectedSuggestions(prev =>
+      prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
+    )
+  }
+
+  async function handleRegenerateWithSuggestions() {
+    if (selectedSuggestions.length === 0) return
+    setRegenerating(true)
+    try {
+        const { data } = await api.post('/prompts/regenerate', {
+            idea,
+            category,
+            currentPrompt: body,
+            selectedSuggestions
+        })
+        setBody(data.prompt)
+        setSuggestions([])
+        setSelectedSuggestions([])
+    } catch (err) {
+        console.log("REGENERATE ERROR:", err.response?.data)
+        alert('Regenerate failed')
+    } finally {
+        setRegenerating(false)
     }
   }
 
@@ -364,6 +392,47 @@ function PromptForm({ initial, onSave, onCancel, saving }) {
             marginTop: 14
           }}
         />
+
+        {suggestions.length > 0 && (
+          <div style={{
+            background: '#faf5ff', border: '1px solid #e9d5ff',
+            borderRadius: 10, padding: '14px 16px', marginTop: 12
+          }}>
+            <p style={{
+              fontSize: 11, fontWeight: 700, color: '#7c3aed', marginBottom: 10,
+              letterSpacing: '0.05em', textTransform: 'uppercase'
+            }}>
+              ✦ Suggestions to improve this prompt
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {suggestions.map((s, i) => (
+                <label key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedSuggestions.includes(s)}
+                    onChange={() => toggleSuggestion(s)}
+                    style={{ marginTop: 3, flexShrink: 0 }}
+                  />
+                  <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{s}</span>
+                </label>
+              ))}
+            </div>
+            {selectedSuggestions.length > 0 && (
+              <button
+                type="button"
+                onClick={handleRegenerateWithSuggestions}
+                disabled={regenerating}
+                style={{
+                  marginTop: 12, background: '#7c3aed', color: '#fff', fontSize: 12,
+                  fontWeight: 600, padding: '7px 14px', borderRadius: 7, border: 'none',
+                  cursor: regenerating ? 'not-allowed' : 'pointer', opacity: regenerating ? 0.6 : 1
+                }}
+              >
+                {regenerating ? 'Regenerating…' : `Regenerate with ${selectedSuggestions.length} selected →`}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -525,7 +594,7 @@ export default function PromptStudio() {
         <Link to="/" style={{ fontWeight: 700, fontSize: 15, color: '#111827', textDecoration: 'none' }}>
           ChatForge
         </Link>
-        <Link to="/dashboard" style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', textDecoration: 'none' }}>
+        <Link to="/" style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', textDecoration: 'none' }}>
           ← Dashboard
         </Link>
       </nav>

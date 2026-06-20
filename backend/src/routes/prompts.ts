@@ -73,9 +73,30 @@ prom.post('/generate', authMiddleware, async (c) => {
     }
   )
 
-  const data = await response.json()
+  const data = await response.json() as any
+  return c.json({ prompt: data.prompt, suggestions: data.suggestions })
+})
 
-  return c.json(data)
+prom.post('/regenerate', authMiddleware, async (c) => {
+    const { idea, category, currentPrompt, selectedSuggestions } = await c.req.json()
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 25000)
+
+    try {
+        const aiResponse = await fetch(`${c.env.AI_SERVICE_URL}/regenerate-prompt`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idea, category, currentPrompt, selectedSuggestions }),
+            signal: controller.signal
+        })
+        clearTimeout(timeoutId)
+        const data = await aiResponse.json() as any
+        return c.json({ prompt: data.prompt })
+    } catch (e) {
+        clearTimeout(timeoutId)
+        return c.json({ error: 'Regenerate failed, try again' }, 500)
+    }
 })
 
 

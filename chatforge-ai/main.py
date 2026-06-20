@@ -258,6 +258,7 @@ class GenerateInput(BaseModel):
     category: str = "GENERAL"
 
 @app.post("/generate-prompt")
+@app.post("/generate-prompt")
 async def generate_prompt(input: GenerateInput):
     prompt = f"""
 You are an expert prompt engineer. A user wants to create a reusable AI prompt.
@@ -265,17 +266,50 @@ You are an expert prompt engineer. A user wants to create a reusable AI prompt.
 Their idea: {input.idea}
 Category: {input.category}
 
-Write a high quality, reusable prompt they can save and use repeatedly.
-The prompt should:
-- Be written in second person ("You are...", "Your task is...")
-- Be specific and detailed enough to get consistent results
-- Include placeholders in [BRACKETS] where the user should fill in their specific details
-- Be professional and clear
+Return a JSON object with exactly these fields:
+- prompt: a high quality, reusable prompt written in second person, with [BRACKETS] for placeholders
+- suggestions: an array of 3-4 short, specific improvement points the user could add.
+  Each should be one concise, concrete sentence — not generic advice.
 
-Return only the prompt text, nothing else. No explanation, no title, no preamble.
+Return only valid JSON, no markdown, no explanation.
+"""
+    try:
+        response = client.models.generate_content(model=MODEL, contents=prompt)
+        result = safe_parse(response.text)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
+
+
+class RegenerateInput(BaseModel):
+    idea: str
+    category: str = "GENERAL"
+    currentPrompt: str
+    selectedSuggestions: list[str]
+
+@app.post("/regenerate-prompt")
+async def regenerate_prompt(input: RegenerateInput):
+    suggestions_text = "\n".join(f"- {s}" for s in input.selectedSuggestions)
+    
+    prompt = f"""
+You are an expert prompt engineer. Rewrite the prompt below, incorporating 
+ONLY the specific improvements listed. Keep everything else about the original 
+prompt's intent and structure unchanged.
+
+Original idea: {input.idea}
+Category: {input.category}
+
+Current prompt:
+{input.currentPrompt}
+
+Improvements to incorporate:
+{suggestions_text}
+
+Return only the improved prompt text, nothing else. No explanation, no preamble, 
+no markdown formatting.
 """
     try:
         response = client.models.generate_content(model=MODEL, contents=prompt)
         return {"prompt": response.text.strip()}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Regeneration failed: {str(e)}")
