@@ -4,7 +4,7 @@
 
 ChatForge compresses any AI chat into a resume prompt, a clean summary, and ready-to-publish content — a LinkedIn post, a blog draft, or an action item list. Built solo as a full-stack project combining React, Hono, Python/FastAPI, and a multi-service Cloudflare Workers architecture.
 
-🔗 **Live app:**  https://d60b6828.chatforge.pages.dev/
+🔗 **Live app:**  https://9f92a90c.chatforge.pages.dev
 [vanditaj008@gmail.com](mailto:vanditaj008@gmail.com)
 
 ---
