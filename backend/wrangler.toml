@@ -9,3 +9,7 @@ JWT_ACCESS_SECRET = "chatforge-access-secret-change-this"
 JWT_REFRESH_SECRET = "chatforge-refresh-secret-change-this"
 DATABASE_URL = "postgresql://neondb_owner:npg_s31tEIbiDjdS@ep-spring-bonus-ap1f83ua-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 AI_SERVICE_URL = "https://chatforge-jjsa.onrender.com"
+
+[[services]]
+binding = "BLOG_SERVICE"
+service = "backend"

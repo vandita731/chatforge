@@ -198,9 +198,19 @@ async def export(input: ExportInput):
     prompts = {
         "BLOG": f"""
 Write a detailed, engaging blog post based on the key insights from this AI conversation.
-Structure it with an intro, main sections with subheadings, and a conclusion.
+Structure it with an intro, main sections, and a conclusion.
 Write in first person as if you are the person who had the conversation.
-Return only the blog content, no extra explanation.
+
+IMPORTANT formatting rules — this will be published as PLAIN TEXT, not rendered markdown:
+- Do NOT use markdown syntax: no ##, ###, **, *, backticks, or bullet dashes
+- For section headings, just write them as a short standalone line followed by a blank line
+  (the platform will display them as plain text, so keep them punchy and clear without symbols)
+- For code snippets, write them as plainly indented or clearly introduced text — do NOT wrap
+  in triple backticks or use any code-block syntax
+- For emphasis, rely on word choice and sentence structure, not asterisks or underscores
+- Use plain paragraph breaks (blank lines) to separate sections instead of markdown headers
+
+Return only the blog content as clean plain text, no extra explanation.
 
 Conversation:
 {input.truncated()}
@@ -213,6 +223,7 @@ Requirements:
 - 3-5 short punchy paragraphs
 - 3-5 relevant hashtags at the end
 - Conversational but professional tone
+- Plain text only — no markdown syntax (no **, ##, backticks)
 Return only the post content, no extra explanation.
 
 Conversation:
@@ -220,7 +231,7 @@ Conversation:
 """,
         "ACTION_ITEMS": f"""
 Extract every concrete action item from this AI conversation.
-Format as a clean numbered list.
+Format as a clean numbered list using plain numbers (1. 2. 3.), no markdown bullets or asterisks.
 Each item should be specific and actionable (start with a verb).
 Return only the numbered list, no extra explanation.
 

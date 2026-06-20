@@ -6,6 +6,7 @@ import auth from './routes/auth'
 import { authMiddleware } from './middleware/auth'
 import sess from './routes/sessions'
 import prom from './routes/prompts'
+import blogConnect from './routes/blogConnect'   // ← add this line
 import { createDb } from './lib/prisma'
 
 type Bindings = {
@@ -13,6 +14,9 @@ type Bindings = {
   JWT_ACCESS_SECRET: string
   JWT_REFRESH_SECRET: string
   ENVIRONMENT: string
+  AI_SERVICE_URL: string     // ← add this if not already there
+  BLOG_API_URL: string       // ← add this
+  BLOG_SITE_URL: string      // ← add this
 }
 
 type Variables = {
@@ -39,6 +43,8 @@ app.get('/me', authMiddleware, (c) => {
 app.route('/auth', auth)
 app.route('/sessions', sess)
 app.route('/prompts', prom)
+app.route('/blog-publish', blogConnect)   // ← add this line
+
 app.get('/s/:token' , async (c)=>{
     const sql = createDb(c.env.DATABASE_URL)
     const token = c.req.param('token')
@@ -47,8 +53,7 @@ app.get('/s/:token' , async (c)=>{
         return c.json({error:"not found"},404)
 
     }
-    // you need to return the session and its outputs
-const session = row[0]
+    const session = row[0]
 const outputs = await sql`SELECT * FROM outputs WHERE "sessionId" = ${session.id}`
 return c.json({
   session: {
@@ -56,7 +61,6 @@ return c.json({
     title: session.title,
     createdAt: session.createdAt,
     tokenCount: session.tokenCount
-    // don't return rawChat — keep it clean
   },
   outputs
 })
